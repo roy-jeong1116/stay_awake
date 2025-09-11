@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'providers/drowsiness_provider.dart';
+import 'providers/auth_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,6 +17,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => DrowsinessProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: MaterialApp(
         title: 'Stay AWAKE',
@@ -27,7 +30,12 @@ class MyApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
-        home: const HomeScreen(),
+        home: Consumer<AuthProvider>(
+          builder: (context, authProvider, child) {
+            print('AuthProvider isLoggedIn: ${authProvider.isLoggedIn}'); // 디버그용
+            return authProvider.isLoggedIn ? const HomeScreen() : const LoginScreen();
+          },
+        ),
         debugShowCheckedModeBanner: false,
       ),
     );

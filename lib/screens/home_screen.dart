@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/drowsiness_provider.dart';
+import '../providers/auth_provider.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 
@@ -72,7 +73,14 @@ class _HomeScreenState extends State<HomeScreen>
           onPressed: () {},
         ),
         actions: [
-          SizedBox(width: 56), // IconButton의 기본 너비와 동일
+          IconButton(
+            onPressed: () => _showLogoutDialog(context),
+            icon: Icon(
+              Icons.logout,
+              color: Colors.black,
+            ),
+            tooltip: '로그아웃',
+          ),
         ],
       ),
       body: Consumer<DrowsinessProvider>(
@@ -146,6 +154,41 @@ class _HomeScreenState extends State<HomeScreen>
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: Text('로그아웃'),
+        content: Text('정말로 로그아웃 하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('취소'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop(); // 다이얼로그 닫기
+              authProvider.logout(); // 로그아웃 실행
+              print('로그아웃 실행됨: ${authProvider.isLoggedIn}'); // 디버그용
+              // 모든 화면을 제거하고 로그인 화면으로 이동
+              Navigator.of(context).pushNamedAndRemoveUntil(
+                '/',
+                (route) => false,
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Color(0xFFFF6B6B),
+            ),
+            child: Text('로그아웃'),
+          ),
+        ],
       ),
     );
   }
