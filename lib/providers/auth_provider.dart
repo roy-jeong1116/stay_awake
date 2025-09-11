@@ -6,9 +6,9 @@ class AuthProvider extends ChangeNotifier {
 
   // 테스트용 더미 계정들
   final Map<String, String> _dummyAccounts = {
-    'test@example.com': 'password123',
-    'user@test.com': '123456',
-    'admin@admin.com': 'admin123',
+    'ksh@test.com': '123456',
+    'psm@test.com': '123456',
+    'jjw@test.com': '123456',
   };
 
   bool get isLoggedIn => _isLoggedIn;

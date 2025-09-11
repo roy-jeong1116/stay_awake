@@ -52,9 +52,9 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text('테스트용 계정 정보:'),
             SizedBox(height: 8),
-            Text('• test@example.com / password123'),
-            Text('• user@test.com / 123456'),
-            Text('• admin@admin.com / admin123'),
+            Text('• ksh@test.com / 123456'),
+            Text('• psm@test.com / 123456'),
+            Text('• jjw@test.com / 123456'),
           ],
         ),
         actions: [

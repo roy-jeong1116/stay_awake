@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'screens/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'providers/drowsiness_provider.dart';
@@ -30,12 +31,7 @@ class MyApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
-        home: Consumer<AuthProvider>(
-          builder: (context, authProvider, child) {
-            print('AuthProvider isLoggedIn: ${authProvider.isLoggedIn}'); // 디버그용
-            return authProvider.isLoggedIn ? const HomeScreen() : const LoginScreen();
-          },
-        ),
+        home: const SplashScreen(),
         debugShowCheckedModeBanner: false,
       ),
     );
