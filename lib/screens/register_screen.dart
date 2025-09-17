@@ -115,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Stay AWAKE에 가입하여 졸음 방지 기능을 이용하세요',
+                  'STAY AWAKE와 함께 졸음을 예방하세요',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
