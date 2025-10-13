@@ -48,7 +48,7 @@ SPEC CHECKSUMS:
   device_info_plus: 97af1d7e84681a90d0693e63169a5d50e0839a0d
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_tts: 0f492aab6accf87059b72354fcb4ba934304771d
-  health: 5a380c0f6c4f619535845992993964293962e99e
+  health: 5d10c4296a95f6be50a8131d47d3cb3ad640bdf5
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   sensors_plus: 42b9de1b8237675fa8d8121e4bb93be0f79fa61d
   system_alert_window: a66510ec18ad7ef4987eff00b6f5ad5d13093910

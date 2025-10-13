@@ -41,7 +41,7 @@ dependencies:
 
   # Sensors and health data
   sensors_plus: ^4.0.2
-  health: ^10.2.0
+  health: ^11.0.0
 
   # Charts for heart rate visualization
   fl_chart: ^0.66.0

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/drowsiness_provider.dart';
 import '../providers/auth_provider.dart';
+import 'drowsiness_detection_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 
@@ -70,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
         centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.menu, color: Colors.black),
-          onPressed: () {},
+          onPressed: () => _showMenuDrawer(context),
         ),
         actions: [
           IconButton(
@@ -158,6 +159,274 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  // 메뉴 드로어 표시
+  void _showMenuDrawer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.only(top: 10),
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildMenuTile(
+                      icon: Icons.camera_alt,
+                      title: '졸음 감지',
+                      subtitle: '실시간 카메라 모니터링',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DrowsinessDetectionScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    _buildMenuTile(
+                      icon: Icons.bar_chart,
+                      title: '통계',
+                      subtitle: '졸음 데이터 분석',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StatisticsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    _buildMenuTile(
+                      icon: Icons.settings,
+                      title: '설정',
+                      subtitle: '앱 환경설정',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 메뉴 타일 위젯
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Color(0xFFFF6B6B).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Color(0xFFFF6B6B),
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 졸음 감지 토글 함수
+  Future<void> _toggleDrowsinessDetection(DrowsinessProvider provider) async {
+    if (!provider.isCameraReady && !provider.isMonitoring) {
+      // 카메라가 준비되지 않은 경우 먼저 초기화
+      final success = await provider.initializeCamera();
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('카메라 초기화에 실패했습니다. 카메라 권한을 확인해주세요.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    await provider.toggleMonitoring();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.isMonitoring
+              ? '졸음 감지가 시작되었습니다.'
+              : '졸음 감지가 중지되었습니다.',
+          ),
+          backgroundColor: provider.isMonitoring ? Colors.green : Colors.grey,
+        ),
+      );
+    }
+  }
+
+  // 상태 카드 위젯
+  Widget _buildStatusCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 상태 텍스트 반환
+  String _getStatusText(DrowsinessLevel level) {
+    switch (level) {
+      case DrowsinessLevel.awake:
+        return '깨어있음';
+      case DrowsinessLevel.drowsy:
+        return '졸음';
+      case DrowsinessLevel.sleeping:
+        return '잠듦';
+    }
+  }
+
+  // 상태 아이콘 반환
+  IconData _getStatusIcon(DrowsinessLevel level) {
+    switch (level) {
+      case DrowsinessLevel.awake:
+        return Icons.visibility;
+      case DrowsinessLevel.drowsy:
+        return Icons.warning;
+      case DrowsinessLevel.sleeping:
+        return Icons.bedtime;
+    }
+  }
+
+  // 상태 색상 반환
+  Color _getStatusColor(DrowsinessLevel level) {
+    switch (level) {
+      case DrowsinessLevel.awake:
+        return Colors.green;
+      case DrowsinessLevel.drowsy:
+        return Colors.orange;
+      case DrowsinessLevel.sleeping:
+        return Colors.red;
+    }
+  }
+
   void _showLogoutDialog(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -206,8 +475,8 @@ class _HomeScreenState extends State<HomeScreen>
     }
 
     return GestureDetector(
-      onTap: () {
-        provider.toggleMonitoring();
+      onTap: () async {
+        await _toggleDrowsinessDetection(provider);
       },
       child: Stack(
         alignment: Alignment.center,

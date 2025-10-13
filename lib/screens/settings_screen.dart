@@ -64,9 +64,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ]),
-
+            
             SizedBox(height: 30),
-
+            
             // 감지 설정
             _buildSectionTitle('감지 설정'),
             SizedBox(height: 15),
@@ -93,9 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ]),
-
+            
             SizedBox(height: 30),
-
+            
             // 기능 설정
             _buildSectionTitle('기능 설정'),
             SizedBox(height: 15),
@@ -120,9 +120,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ]),
-
+            
             SizedBox(height: 30),
-
+            
             // 데이터 관리
             _buildSectionTitle('데이터 관리'),
             SizedBox(height: 15),
@@ -145,9 +145,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
             ]),
-
+            
             SizedBox(height: 30),
-
+            
             // 앱 정보
             _buildSectionTitle('앱 정보'),
             SizedBox(height: 15),
