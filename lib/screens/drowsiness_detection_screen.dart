@@ -40,181 +40,203 @@ class _DrowsinessDetectionScreenState extends State<DrowsinessDetectionScreen>
   @override
   void dispose() {
     _pulseController.dispose();
-    // 화면 종료 시 카메라 리소스 정리
+    // 화면 종료 시 졸음감지 상태에 따라 카메라 처리
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<DrowsinessProvider>(context, listen: false);
-      provider.cleanupForScreenExit();
+      if (mounted) {
+        final provider = Provider.of<DrowsinessProvider>(context, listen: false);
+        // 졸음감지가 비활성화되어 있으면 카메라를 해제
+        if (!provider.isMonitoring && provider.isCameraReady) {
+          provider.cleanupForScreenExit();
+        }
+      }
     });
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          '졸음 감지',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+    return WillPopScope(
+      onWillPop: () async {
+        // 뒤로가기 전에 졸음감지 상태 확인
+        final provider = Provider.of<DrowsinessProvider>(context, listen: false);
+        if (!provider.isMonitoring && provider.isCameraReady) {
+          await provider.cleanupForScreenExit();
+        }
+        return true; // 뒤로가기 허용
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.black),
+            onPressed: () async {
+              // 뒤로가기 전에 졸음감지 상태 확인
+              final provider = Provider.of<DrowsinessProvider>(context, listen: false);
+              if (!provider.isMonitoring && provider.isCameraReady) {
+                await provider.cleanupForScreenExit();
+              }
+              Navigator.pop(context);
+            },
           ),
+          title: Text(
+            '졸음 감지',
+            style: TextStyle(
+              color: Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: true,
         ),
-        centerTitle: true,
-      ),
-      body: Consumer<DrowsinessProvider>(
-        builder: (context, provider, child) {
-          // 활성화 상태에 따라 애니메이션 제어
-          if (provider.isMonitoring) {
-            _pulseController.repeat(reverse: true);
-          } else {
-            _pulseController.stop();
-            _pulseController.reset();
-          }
+        body: Consumer<DrowsinessProvider>(
+          builder: (context, provider, child) {
+            // 활성화 상태에 따라 애니메이션 제어
+            if (provider.isMonitoring) {
+              _pulseController.repeat(reverse: true);
+            } else {
+              _pulseController.stop();
+              _pulseController.reset();
+            }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // 카메라 미리보기 섹션
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.camera_alt,
-                              color: Color(0xFFFF6B6B),
-                              size: 24,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // 카메라 미리보기 섹션
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.camera_alt,
+                                color: Color(0xFFFF6B6B),
+                                size: 24,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              '실시간 졸음 감지',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
+                              const SizedBox(width: 8),
+                              Text(
+                                '실시간 졸음 감지',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black87,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
 
-                        // 카메라 미리보기
-                        const CameraPreviewWidget(),
+                          // 카메라 미리보기
+                          const CameraPreviewWidget(),
 
-                        const SizedBox(height: 16),
+                          const SizedBox(height: 16),
 
-                        // 졸음 감지 활성화/비활성화 버튼
-                        SizedBox(
-                          width: double.infinity,
-                          height: 56,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _toggleDrowsinessDetection(provider),
-                            icon: AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: provider.isMonitoring ? _pulseAnimation.value : 1.0,
-                                  child: Icon(
-                                    provider.isMonitoring ? Icons.stop : Icons.play_arrow,
-                                    size: 24,
-                                  ),
-                                );
-                              },
-                            ),
-                            label: Text(
-                              provider.isMonitoring ? '졸음 감지 중지' : '졸음 감지 시작',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                          // 졸음 감지 활성화/비활성화 버튼
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _toggleDrowsinessDetection(provider),
+                              icon: AnimatedBuilder(
+                                animation: _pulseAnimation,
+                                builder: (context, child) {
+                                  return Transform.scale(
+                                    scale: provider.isMonitoring ? _pulseAnimation.value : 1.0,
+                                    child: Icon(
+                                      provider.isMonitoring ? Icons.stop : Icons.play_arrow,
+                                      size: 24,
+                                    ),
+                                  );
+                                },
                               ),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: provider.isMonitoring
-                                ? Colors.red.shade400
-                                : Color(0xFFFF6B6B),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                              label: Text(
+                                provider.isMonitoring ? '졸음 감지 중지' : '졸음 감지 시작',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                              elevation: provider.isMonitoring ? 8 : 4,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: provider.isMonitoring
+                                  ? Colors.red.shade400
+                                  : Color(0xFFFF6B6B),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: provider.isMonitoring ? 8 : 4,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // 상태 정보 카드들
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatusCard(
-                        title: '현재 상태',
-                        value: _getStatusText(provider.currentLevel),
-                        icon: _getStatusIcon(provider.currentLevel),
-                        color: _getStatusColor(provider.currentLevel),
+                  // 상태 정보 카드들
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatusCard(
+                          title: '현재 상태',
+                          value: _getStatusText(provider.currentLevel),
+                          icon: _getStatusIcon(provider.currentLevel),
+                          color: _getStatusColor(provider.currentLevel),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatusCard(
-                        title: '알림 횟수',
-                        value: '${provider.alertCount}회',
-                        icon: Icons.notifications,
-                        color: Colors.orange,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatusCard(
+                          title: '알림 횟수',
+                          value: '${provider.alertCount}회',
+                          icon: Icons.notifications,
+                          color: Colors.orange,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildStatusCard(
-                        title: '눈 깜빡임',
-                        value: '${provider.blinkRate.toStringAsFixed(1)}/분',
-                        icon: Icons.remove_red_eye,
-                        color: Colors.blue,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatusCard(
+                          title: '눈 깜빡임',
+                          value: '${provider.blinkRate.toStringAsFixed(1)}/분',
+                          icon: Icons.remove_red_eye,
+                          color: Colors.blue,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildStatusCard(
-                        title: '졸음도',
-                        value: '${(provider.drowsinessScore * 100).toStringAsFixed(1)}%',
-                        icon: Icons.psychology,
-                        color: Colors.purple,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatusCard(
+                          title: '졸음도',
+                          value: '${(provider.drowsinessScore * 100).toStringAsFixed(1)}%',
+                          icon: Icons.psychology,
+                          color: Colors.purple,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: 32),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: 32),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

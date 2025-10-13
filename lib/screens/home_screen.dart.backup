@@ -70,16 +70,8 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.camera_alt, color: Colors.black),
-          tooltip: '졸음감지 현황',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const DrowsinessDetectionScreen(),
-              ),
-            );
-          },
+          icon: Icon(Icons.menu, color: Colors.black),
+          onPressed: () => _showMenuDrawer(context),
         ),
         actions: [
           IconButton(
@@ -167,7 +159,157 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // 졸음감지 현황 토글 함수
+  // 메뉴 드로어 표시
+  void _showMenuDrawer(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: EdgeInsets.only(top: 10),
+                width: 50,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2.5),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildMenuTile(
+                      icon: Icons.camera_alt,
+                      title: '졸음 감지',
+                      subtitle: '실시간 카메라 모니터링',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DrowsinessDetectionScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    _buildMenuTile(
+                      icon: Icons.bar_chart,
+                      title: '통계',
+                      subtitle: '졸음 데이터 분석',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StatisticsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    _buildMenuTile(
+                      icon: Icons.settings,
+                      title: '설정',
+                      subtitle: '앱 환경설정',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 메뉴 타일 위젯
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: Color(0xFFFF6B6B).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: Color(0xFFFF6B6B),
+                size: 24,
+              ),
+            ),
+            SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey.shade400,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 졸음 감지 토글 함수
   Future<void> _toggleDrowsinessDetection(DrowsinessProvider provider) async {
     if (!provider.isCameraReady && !provider.isMonitoring) {
       // 카메라가 준비되지 않은 경우 먼저 초기화
@@ -192,8 +334,8 @@ class _HomeScreenState extends State<HomeScreen>
         SnackBar(
           content: Text(
             provider.isMonitoring
-              ? '졸음감지가 시작되었습니다.'
-              : '졸음감지가 중지되었습니다.',
+              ? '졸음 감지가 시작되었습니다.'
+              : '졸음 감지가 중지되었습니다.',
           ),
           backgroundColor: provider.isMonitoring ? Colors.green : Colors.grey,
         ),
@@ -472,7 +614,7 @@ class _HomeScreenState extends State<HomeScreen>
       return Column(
         children: [
           Text(
-            '졸음감지 비활성 상태입니다',
+            '졸음 감지 비활성 상태입니다',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -481,7 +623,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SizedBox(height: 4),
           Text(
-            '버튼을 눌러 졸음감지를 시작하세요',
+            '버튼을 눌러 졸음 감지를 시작하세요',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,
@@ -494,7 +636,7 @@ class _HomeScreenState extends State<HomeScreen>
       return Column(
         children: [
           Text(
-            '졸음감지 활성화 상태입니다',
+            '졸음 감지 활성화 상태입니다',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -503,7 +645,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           SizedBox(height: 4),
           Text(
-            '버튼을 누르면 졸음감지가 해제됩니다',
+            '버튼을 누르면 졸음 감지가 해제됩니다',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w400,

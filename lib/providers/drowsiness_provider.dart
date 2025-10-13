@@ -109,6 +109,7 @@ class DrowsinessProvider with ChangeNotifier {
     try {
       await _cameraService.dispose();
       _isCameraReady = false;
+      notifyListeners(); // UI 업데이트를 위해 추가
       debugPrint('졸음 감지 중지 - 카메라 리소스 해제 완료');
     } catch (e) {
       debugPrint('카메라 리소스 해제 실패: $e');
