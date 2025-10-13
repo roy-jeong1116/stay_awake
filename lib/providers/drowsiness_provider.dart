@@ -3,12 +3,16 @@ import 'package:camera/camera.dart';
 import 'dart:async';
 import '../services/camera_service.dart';
 import '../services/face_analysis_service.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
+import '../overlay/overlay_launcher.dart';
 
 enum DrowsinessLevel {
   awake,    // 깨어있음
   drowsy,   // 졸음
   sleeping  // 잠듦
 }
+
+enum OverlayMode { none, systemOverlay, inApp }
 
 class HeartRateData {
   final DateTime time;
@@ -18,6 +22,11 @@ class HeartRateData {
 }
 
 class DrowsinessProvider with ChangeNotifier {
+  bool _overlayActiveCache = false;
+  OverlayMode _overlayMode = OverlayMode.none;
+  OverlayMode get overlayMode => _overlayMode;
+  bool get isSystemOverlay => _overlayMode == OverlayMode.systemOverlay;
+  bool get isInAppOverlay => _overlayMode == OverlayMode.inApp;
   DrowsinessLevel _currentLevel = DrowsinessLevel.awake;
   bool _isMonitoring = false;
   bool _isCameraReady = false;
@@ -49,6 +58,35 @@ class DrowsinessProvider with ChangeNotifier {
   List<HeartRateData> get heartRateHistory => _heartRateHistory;
   CameraController? get cameraController => _cameraService.controller;
 
+  Future<void> resumeOverlayIfNeeded() async {
+    if (_overlayMode == OverlayMode.systemOverlay && _isMonitoring) {
+      await OverlayLauncher.ensureVisible();
+    }
+  }
+
+  Future<bool> isSystemOverlayActive() async {
+    try {
+      final active = await FlutterOverlayWindow.isActive();
+      _overlayActiveCache = active;
+      return active;
+    } catch (_) {
+      return _overlayActiveCache;
+    }
+  }
+
+  // 오버레이 시작 (Provider의 카메라/스트리밍엔 전혀 손대지 않음)
+  Future<void> startSystemOverlay() async {
+    final ok = await OverlayLauncher.ensureVisible(); // 이미 활성화면 ensureVisible
+    _overlayActiveCache = ok;
+    notifyListeners();
+  }
+
+// 오버레이 중지
+  Future<void> stopSystemOverlay() async {
+    await OverlayLauncher.closeOverlay();
+    _overlayActiveCache = false;
+    notifyListeners();
+  }
   // 카메라 초기화
   Future<bool> initializeCamera() async {
     try {
@@ -65,43 +103,66 @@ class DrowsinessProvider with ChangeNotifier {
   }
 
   // 모니터링 시작/중지
-  Future<void> toggleMonitoring() async {
+  Future<void> toggleMonitoring({bool useSystemOverlay = false}) async {
     if (!_isMonitoring) {
-      // 모니터링 시작 - 카메라 초기화 및 활성화
-      debugPrint('졸음감지 시작 - 카메라 활성화');
-      final cameraInitialized = await initializeCamera();
-      if (!cameraInitialized) {
-        debugPrint('카메라 초기화 실패로 모니터링을 시작할 수 없습니다.');
+      if (useSystemOverlay) {
+        // 1) 시스템 오버레이 모드 시작: 앱 내부 카메라는 반드시 꺼둠
+        await _releaseCameraResources(); // 혹시 켜져있다면 정리
+        _overlayMode = OverlayMode.systemOverlay;
+        try {
+          await OverlayLauncher.openOverlay();
+          _isMonitoring = true;
+          _sessionStartTime = DateTime.now();
+          _alertCount = 0;
+          _faceAnalysisService.reset();
+          notifyListeners();
+        } catch (e) {
+          debugPrint('오버레이 시작 실패: $e');
+          _overlayMode = OverlayMode.none;
+        }
+        return;
+      } else {
+        // 2) 기존 in-app 모니터링 시작 (현재 코드 그대로)
+        debugPrint('졸음감지 시작 - 카메라 활성화');
+        final cameraInitialized = await initializeCamera();
+        if (!cameraInitialized) {
+          debugPrint('카메라 초기화 실패로 모니터링을 시작할 수 없습니다.');
+          return;
+        }
+        _overlayMode = OverlayMode.inApp;
+        _isMonitoring = true;
+        _sessionStartTime = DateTime.now();
+        _alertCount = 0;
+        _faceAnalysisService.reset();
+        await _startDrowsinessDetection(); // 기존 함수
+        notifyListeners();
         return;
       }
-
-      _isMonitoring = true;
-      _sessionStartTime = DateTime.now();
-      _alertCount = 0;
-      _faceAnalysisService.reset();
-
-      // 카메라 스트리밍 시작 (시뮬레이터 모드 지원)
-      await _startDrowsinessDetection();
     } else {
-      // 모니터링 중지 - 카메라 해제
-      debugPrint('졸음감지 중지 - 카메라 해제');
+      // === 중지 공통 ===
+      debugPrint('졸음감지 중지');
+      if (_overlayMode == OverlayMode.systemOverlay) {
+        try {
+          await OverlayLauncher.closeOverlay();
+        } catch (e) {
+          debugPrint('오버레이 닫기 실패: $e');
+        }
+      } else {
+        // in-app 이었다면 스트리밍/카메라 정지
+        await _cameraService.stopStreaming();
+        if (_cameraService.isSimulatorMode) {
+          _stopSimulatorMode();
+        }
+        await _releaseCameraResources();
+      }
+
+      _overlayMode = OverlayMode.none;
       _isMonitoring = false;
       _sessionStartTime = null;
       _currentLevel = DrowsinessLevel.awake;
       _drowsinessScore = 0.0;
-
-      // 카메라 스트리밍 중지
-      await _cameraService.stopStreaming();
-
-      // 시뮬레이터 모드인 경우 타이머 정리
-      if (_cameraService.isSimulatorMode) {
-        _stopSimulatorMode();
-      }
-
-      // 졸음 감지 중지 시 카메라 리소스 완전 해제
-      await _releaseCameraResources();
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   // 카메라 리소스 해제 (졸음 감지 중지 시)

@@ -28,6 +28,10 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  tflite_flutter: ^0.10.0
+  image: ^4.2.0
+  flutter_overlay_window: ^0.4.0
+
   flutter:
     sdk: flutter
 
@@ -72,6 +76,8 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/models/drowsy_fp32.tflite
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

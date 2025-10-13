@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import 'drowsiness_detection_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
+import 'package:flutter_overlay_window/flutter_overlay_window.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,13 +15,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pulseController = AnimationController(
       duration: Duration(seconds: 2),
       vsync: this,
@@ -36,8 +38,19 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 앱이 다시 전면으로
+    if (state == AppLifecycleState.resumed) {
+      final p = context.read<DrowsinessProvider>();
+      p.resumeOverlayIfNeeded(); // ★ 오버레이 복구
+    }
   }
 
   @override
@@ -69,18 +82,6 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         centerTitle: true,
-        leading: IconButton(
-          icon: Icon(Icons.camera_alt, color: Colors.black),
-          tooltip: '졸음감지 현황',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const DrowsinessDetectionScreen(),
-              ),
-            );
-          },
-        ),
         actions: [
           IconButton(
             onPressed: () => _showLogoutDialog(context),
@@ -334,7 +335,23 @@ class _HomeScreenState extends State<HomeScreen>
 
     return GestureDetector(
       onTap: () async {
-        await _toggleDrowsinessDetection(provider);
+        final provider = context.read<DrowsinessProvider>();
+        try {
+          await provider.toggleMonitoring(useSystemOverlay: true); // ★ 시스템 오버레이 모드
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(provider.isMonitoring ? '오버레이+졸음감지 시작' : '감지 중지'),
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('작동 실패: $e')),
+            );
+          }
+        }
       },
       child: Stack(
         alignment: Alignment.center,
