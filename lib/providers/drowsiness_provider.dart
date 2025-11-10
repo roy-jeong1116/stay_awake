@@ -3,6 +3,7 @@ import 'package:camera/camera.dart';
 import 'dart:async';
 import '../services/camera_service.dart';
 import '../services/face_analysis_service.dart';
+import '../services/health_service.dart';
 
 enum DrowsinessLevel {
   awake,    // 깨어있음
@@ -33,6 +34,11 @@ class DrowsinessProvider with ChangeNotifier {
   // 카메라 관련 서비스
   final CameraService _cameraService = CameraService.instance;
   final FaceAnalysisService _faceAnalysisService = FaceAnalysisService.instance;
+  final HealthService _healthService = HealthService();
+  
+  // 심박수 모니터링 구독
+  StreamSubscription<HealthMetrics>? _heartRateSubscription;
+  StreamSubscription<DeviceConnectionStatus>? _connectionSubscription;
 
   // Getters
   DrowsinessLevel get currentLevel => _currentLevel;
@@ -40,6 +46,8 @@ class DrowsinessProvider with ChangeNotifier {
   bool get isCameraReady => _isCameraReady;
   bool get isWatchConnected => _isWatchConnected;
   bool get isSimulatorMode => _cameraService.isSimulatorMode;
+  DeviceConnectionStatus get watchConnectionStatus => _healthService.connectionStatus;
+  HealthPermissionStatus get healthPermissionStatus => _healthService.permissionStatus;
   double get heartRate => _heartRate;
   double get blinkRate => _blinkRate;
   double get drowsinessScore => _drowsinessScore;
@@ -48,6 +56,28 @@ class DrowsinessProvider with ChangeNotifier {
   DateTime? get sessionStartTime => _sessionStartTime;
   List<HeartRateData> get heartRateHistory => _heartRateHistory;
   CameraController? get cameraController => _cameraService.controller;
+
+  // 초기화
+  Future<bool> initialize() async {
+    try {
+      // Health Service 초기화
+      final healthInitialized = await _healthService.initialize();
+      if (!healthInitialized) {
+        debugPrint('Health Service 초기화 실패');
+      }
+      
+      // 연결 상태 모니터링 시작
+      _connectionSubscription = _healthService.connectionStream?.listen((status) {
+        _isWatchConnected = status == DeviceConnectionStatus.connected;
+        notifyListeners();
+      });
+      
+      return true;
+    } catch (e) {
+      debugPrint('초기화 실패: $e');
+      return false;
+    }
+  }
 
   // 카메라 초기화
   Future<bool> initializeCamera() async {
@@ -80,6 +110,9 @@ class DrowsinessProvider with ChangeNotifier {
       _alertCount = 0;
       _faceAnalysisService.reset();
 
+      // 스마트워치 심박수 모니터링 시작
+      await _startHeartRateMonitoring();
+
       // 카메라 스트리밍 시작 (시뮬레이터 모드 지원)
       await _startDrowsinessDetection();
     } else {
@@ -89,6 +122,9 @@ class DrowsinessProvider with ChangeNotifier {
       _sessionStartTime = null;
       _currentLevel = DrowsinessLevel.awake;
       _drowsinessScore = 0.0;
+
+      // 심박수 모니터링 중지
+      await _stopHeartRateMonitoring();
 
       // 카메라 스트리밍 중지
       await _cameraService.stopStreaming();
@@ -280,16 +316,60 @@ class DrowsinessProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 졸음 상태 분석
+  // 개선된 졸음 상태 분석 (심박수 + 얼굴 인식 데이터 통합)
   void _analyzeDrowsiness() {
-    if (_blinkRate < 5 && _heartRate < 60) {
+    double combinedScore = 0.0;
+    
+    // 심박수 기반 졸음 점수 (40% 가중치)
+    double heartRateScore = _calculateHeartRateDrowsinessScore();
+    combinedScore += heartRateScore * 0.4;
+    
+    // 얼굴 분석 기반 점수 (60% 가중치)
+    combinedScore += _drowsinessScore * 0.6;
+    
+    // 눈 깜빡임 추가 보정
+    if (_blinkRate < 5) {
+      combinedScore += 0.3; // 매우 느린 깜빡임
+    } else if (_blinkRate < 10) {
+      combinedScore += 0.1; // 느린 깜빡임
+    }
+    
+    // 졸음 상태 판정
+    if (combinedScore >= 0.8) {
       _currentLevel = DrowsinessLevel.sleeping;
       _triggerAlert();
-    } else if (_blinkRate < 10 || _heartRate < 65) {
+    } else if (combinedScore >= 0.5) {
       _currentLevel = DrowsinessLevel.drowsy;
       _triggerAlert();
     } else {
       _currentLevel = DrowsinessLevel.awake;
+    }
+    
+    // 통합 졸음 점수 업데이트
+    _drowsinessScore = combinedScore.clamp(0.0, 1.0);
+  }
+  
+  // 심박수 기반 졸음 점수 계산
+  double _calculateHeartRateDrowsinessScore() {
+    if (_heartRate <= 0) return 0.0;
+    
+    // 정상 휴식 심박수 범위: 60-80 BPM
+    // 졸음 상태에서는 심박수가 더 낮아짐: 50-65 BPM
+    
+    if (_heartRate < 50) {
+      return 0.9; // 비정상적으로 낮음 (매우 졸림)
+    } else if (_heartRate < 55) {
+      return 0.7; // 매우 낮음 (졸림)
+    } else if (_heartRate < 60) {
+      return 0.5; // 낮음 (약간 졸림)
+    } else if (_heartRate < 65) {
+      return 0.3; // 정상 하한 (정상)
+    } else if (_heartRate <= 80) {
+      return 0.1; // 정상 범위 (깨어있음)
+    } else if (_heartRate <= 90) {
+      return 0.0; // 정상 상한 (완전히 깨어있음)
+    } else {
+      return 0.2; // 높음 (스트레스/흥분 상태)
     }
   }
 
@@ -314,6 +394,9 @@ class DrowsinessProvider with ChangeNotifier {
   Future<void> dispose() async {
     _isMonitoring = false;
     _stopSimulatorMode();
+    await _stopHeartRateMonitoring();
+    await _connectionSubscription?.cancel();
+    await _healthService.dispose();
     await _cameraService.dispose();
     _isCameraReady = false;
     super.dispose();
@@ -338,9 +421,96 @@ class DrowsinessProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // 심박수 모니터링 시작
+  Future<void> _startHeartRateMonitoring() async {
+    try {
+      final connected = await _healthService.connectToWearables();
+      if (connected) {
+        final monitoringStarted = await _healthService.startHeartRateMonitoring();
+        if (monitoringStarted) {
+          // 심박수 데이터 구독
+          _heartRateSubscription = _healthService.heartRateStream?.listen((metrics) {
+            if (metrics.isValid) {
+              updateHeartRate(metrics.heartRate);
+              debugPrint('심박수 업데이트: ${metrics.heartRate.toStringAsFixed(1)} BPM');
+            }
+          });
+          debugPrint('심박수 모니터링 시작됨');
+        } else {
+          debugPrint('심박수 모니터링 시작 실패');
+        }
+      } else {
+        debugPrint('스마트워치 연결 실패');
+      }
+    } catch (e) {
+      debugPrint('심박수 모니터링 시작 중 오류: $e');
+    }
+  }
+
+  // 심박수 모니터링 중지
+  Future<void> _stopHeartRateMonitoring() async {
+    try {
+      await _heartRateSubscription?.cancel();
+      _heartRateSubscription = null;
+      await _healthService.stopHeartRateMonitoring();
+      debugPrint('심박수 모니터링 중지됨');
+    } catch (e) {
+      debugPrint('심박수 모니터링 중지 중 오류: $e');
+    }
+  }
+
+  // 스마트워치 수동 연결
+  Future<bool> connectToSmartwatch() async {
+    try {
+      final connected = await _healthService.connectToWearables();
+      if (connected) {
+        _isWatchConnected = true;
+        notifyListeners();
+        debugPrint('스마트워치 연결 성공');
+        return true;
+      } else {
+        _isWatchConnected = false;
+        notifyListeners();
+        debugPrint('스마트워치 연결 실패');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('스마트워치 연결 중 오류: $e');
+      _isWatchConnected = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   // 스마트 워치 연결 해제
   void disconnectWatch() {
+    _healthService.disconnect();
     _isWatchConnected = false;
     notifyListeners();
+  }
+
+  // Health 권한 요청
+  Future<bool> requestHealthPermissions() async {
+    try {
+      return await _healthService.requestPermissions();
+    } catch (e) {
+      debugPrint('Health 권한 요청 실패: $e');
+      return false;
+    }
+  }
+
+  // 수동 심박수 측정
+  Future<double?> measureHeartRateOnce() async {
+    try {
+      final metrics = await _healthService.measureHeartRateOnce();
+      if (metrics.isValid) {
+        updateHeartRate(metrics.heartRate);
+        return metrics.heartRate;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('수동 심박수 측정 실패: $e');
+      return null;
+    }
   }
 }

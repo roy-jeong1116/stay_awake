@@ -6,7 +6,8 @@ import 'screens/login_screen.dart';
 import 'providers/drowsiness_provider.dart';
 import 'providers/auth_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -17,7 +18,13 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => DrowsinessProvider()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final provider = DrowsinessProvider();
+            provider.initialize(); // Health Service 초기화
+            return provider;
+          },
+        ),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: MaterialApp(

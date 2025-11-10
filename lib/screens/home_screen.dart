@@ -516,28 +516,36 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildWatchConnectionStatus(DrowsinessProvider provider) {
+    // 실제 HealthService 연결 상태 사용
+    final isConnected = provider.isWatchConnected;
+
     return GestureDetector(
       onTap: () {
-        // 테스트용으로 탭하면 연동 상태를 토글
-        provider.toggleWatchConnection();
+        // 워치 연결 화면으로 이동
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const DrowsinessDetectionScreen(),
+          ),
+        );
       },
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           // 워치 아이콘 (불빛 효과 없음)
           Icon(
-            provider.isWatchConnected ? Icons.watch : Icons.watch_off_outlined,
-            color: provider.isWatchConnected ? Colors.green : Colors.grey,
+            isConnected ? Icons.watch : Icons.watch_off_outlined,
+            color: isConnected ? Colors.green : Colors.grey,
             size: 20,
           ),
           SizedBox(width: 8),
           // 연동 상태 텍스트
           Text(
-            provider.isWatchConnected ? '워치 연동됨' : '워치 연동 안됨',
+            isConnected ? '워치 연동됨' : '워치 연동 안됨',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: provider.isWatchConnected ? Colors.green.shade700 : Colors.grey.shade600,
+              color: isConnected ? Colors.green.shade700 : Colors.grey.shade600,
             ),
           ),
         ],

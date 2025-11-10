@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/drowsiness_provider.dart';
 import '../widgets/camera_preview_widget.dart';
+import '../widgets/smartwatch_widget.dart';
 
 class DrowsinessDetectionScreen extends StatefulWidget {
   const DrowsinessDetectionScreen({super.key});
@@ -222,14 +223,28 @@ class _DrowsinessDetectionScreenState extends State<DrowsinessDetectionScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildStatusCard(
-                          title: '졸음도',
-                          value: '${(provider.drowsinessScore * 100).toStringAsFixed(1)}%',
-                          icon: Icons.psychology,
-                          color: Colors.purple,
+                          title: '심박수',
+                          value: '${provider.heartRate.toStringAsFixed(0)} BPM',
+                          icon: Icons.favorite,
+                          color: Colors.red,
                         ),
                       ),
                     ],
                   ),
+
+                  const SizedBox(height: 12),
+
+                  _buildStatusCard(
+                    title: '졸음도',
+                    value: '${(provider.drowsinessScore * 100).toStringAsFixed(1)}%',
+                    icon: Icons.psychology,
+                    color: Colors.purple,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 스마트워치 연동 섹션
+                  const SmartwatchWidget(),
 
                   const SizedBox(height: 32),
                 ],
