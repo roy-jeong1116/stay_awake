@@ -6,6 +6,8 @@ import 'drowsiness_detection_screen.dart';
 import 'statistics_screen.dart';
 import 'settings_screen.dart';
 
+// TFLiteService 및 Camera 관련 import 제거 (Provider가 담당)
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -18,9 +20,14 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
+  // TFLiteService 및 _isDetecting 변수 제거
+
   @override
   void initState() {
     super.initState();
+
+    // TFLiteService 초기화 코드 제거
+
     _pulseController = AnimationController(
       duration: Duration(seconds: 2),
       vsync: this,
@@ -185,6 +192,7 @@ class _HomeScreenState extends State<HomeScreen>
       }
     }
 
+    // Provider의 toggleMonitoring 호출 (TFLite 로직은 Provider 내부에서 실행됨)
     await provider.toggleMonitoring();
 
     if (mounted) {
@@ -192,8 +200,8 @@ class _HomeScreenState extends State<HomeScreen>
         SnackBar(
           content: Text(
             provider.isMonitoring
-              ? '졸음감지가 시작되었습니다.'
-              : '졸음감지가 중지되었습니다.',
+                ? '졸음감지가 시작되었습니다.'
+                : '졸음감지가 중지되었습니다.',
           ),
           backgroundColor: provider.isMonitoring ? Colors.green : Colors.grey,
         ),
@@ -307,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen>
               // 모든 화면을 제거하고 로그인 화면으로 이동
               Navigator.of(context).pushNamedAndRemoveUntil(
                 '/',
-                (route) => false,
+                    (route) => false,
               );
             },
             style: TextButton.styleFrom(
@@ -351,8 +359,8 @@ class _HomeScreenState extends State<HomeScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        indicatorColor.withValues(alpha: 0.2 * (2 - _pulseAnimation.value)),
-                        indicatorColor.withValues(alpha: 0.1 * (2 - _pulseAnimation.value)),
+                        indicatorColor.withOpacity(0.2 * (2 - _pulseAnimation.value)),
+                        indicatorColor.withOpacity(0.1 * (2 - _pulseAnimation.value)),
                         Colors.transparent,
                       ],
                       stops: [0.0, 0.7, 1.0],
@@ -371,8 +379,8 @@ class _HomeScreenState extends State<HomeScreen>
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
-                        indicatorColor.withValues(alpha: 0.3 * (2 - _pulseAnimation.value)),
-                        indicatorColor.withValues(alpha: 0.15 * (2 - _pulseAnimation.value)),
+                        indicatorColor.withOpacity(0.3 * (2 - _pulseAnimation.value)),
+                        indicatorColor.withOpacity(0.15 * (2 - _pulseAnimation.value)),
                         Colors.transparent,
                       ],
                       stops: [0.0, 0.8, 1.0],
@@ -397,18 +405,18 @@ class _HomeScreenState extends State<HomeScreen>
               boxShadow: [
                 if (provider.isMonitoring) ...[
                   BoxShadow(
-                    color: indicatorColor.withValues(alpha: 0.4),
+                    color: indicatorColor.withOpacity(0.4),
                     blurRadius: 40,
                     spreadRadius: 5,
                   ),
                   BoxShadow(
-                    color: indicatorColor.withValues(alpha: 0.2),
+                    color: indicatorColor.withOpacity(0.2),
                     blurRadius: 80,
                     spreadRadius: 15,
                   ),
                 ] else ...[
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -443,7 +451,7 @@ class _HomeScreenState extends State<HomeScreen>
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: Color(0xFFFF6B6B).withValues(alpha: 0.1),
+              color: Color(0xFFFF6B6B).withOpacity(0.1),
               borderRadius: BorderRadius.circular(15),
             ),
             child: Icon(
